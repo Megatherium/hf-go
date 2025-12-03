@@ -5,11 +5,14 @@ A Go implementation of the Hugging Face Hub models listing functionality. This p
 ## Features
 
 - List models from Hugging Face Hub with various filters
+- Get detailed model information including files, metadata, and model cards
+- Extract available quantizations from GGUF models
 - Support for multiple output formats (table, JSON)
 - CLI tool built with Cobra
 - Reusable as a Go module/library
 - Filters: search, author, pipeline tag, library, language, tags
 - Sorting by downloads, likes, trending score, etc.
+- Support for private and gated models
 
 ## Installation
 
@@ -125,6 +128,42 @@ func main() {
 }
 ```
 
+#### Example 3: Using the advanced library features
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+
+    hfmodels "github.com/Megatherium/hf-go"
+)
+
+func main() {
+    client := hfmodels.NewClient("") // Pass HF token if needed
+
+    // Get detailed model information
+    details, err := client.GetModelDetails("microsoft/DialoGPT-medium")
+    if err != nil {
+        log.Fatalf("Error getting model details: %v", err)
+    }
+
+    fmt.Printf("Model: %s\n", details.ID)
+    fmt.Printf("Downloads: %d\n", details.Downloads)
+    fmt.Printf("License: %s\n", details.CardData.GetLicense())
+    fmt.Printf("Base Model: %s\n", details.CardData.GetBaseModel())
+
+    // For GGUF models, get available quantizations
+    quants, err := client.GetAvailableQuants("TheBloke/Llama-2-7B-GGUF")
+    if err != nil {
+        log.Printf("Error getting quants (might not be a GGUF model): %v", err)
+    } else {
+        fmt.Printf("Available quantizations: %v\n", quants)
+    }
+}
+```
+
 ## API Options
 
 ### ListModelsOptions
@@ -140,6 +179,28 @@ func main() {
 - `Sort` - Sort by field (e.g., 'downloads', 'likes', 'trending_score')
 - `Direction` - Sort direction: -1 for descending, 1 for ascending
 - `Token` - Hugging Face API token (optional)
+
+### ModelDetails
+
+The `ModelDetails` struct provides comprehensive model information:
+
+- `ID` - Model identifier
+- `Author` - Model author
+- `Downloads` - Download count
+- `Likes` - Like count
+- `LastModified` - Last modification time
+- `PipelineTag` - Pipeline tag (e.g., 'text-generation')
+- `LibraryName` - Library name (e.g., 'pytorch')
+- `Tags` - List of model tags
+- `Siblings` - List of files in the model repository
+- `CardData` - Model card metadata including license, base model, etc.
+- `GGUFInfo` - GGUF-specific information (if applicable)
+
+### Additional Functions
+
+- `GetModelDetails(modelID string)` - Get detailed information about a specific model
+- `GetAvailableQuants(modelID string)` - Extract available GGUF quantizations for a model
+- `ExtractQuantsFromSiblings(siblings []Sibling)` - Utility function to parse quantizations from file list
 
 ## Output Formats
 
@@ -165,9 +226,10 @@ Machine-readable JSON array containing model objects with all available metadata
 ## Project Structure
 
 ```
-go-hf-go/
+hf-go/
 ├── cmd/
 │   └── main.go                 # CLI entry point
+├── hfmodels.go                 # Main library package with advanced features
 ├── internal/
 │   ├── api/
 │   │   └── client.go          # API client
@@ -178,16 +240,37 @@ go-hf-go/
 │   │   └── model.go           # Data models
 │   └── pkg/
 │       ├── examples/
-│       │   └── example.go     # Usage examples
+│       │   ├── example.go     # Basic usage examples
+│       │   └── example_usage.go # Library usage examples
 │       └── utils/
 │           └── formatters.go  # Output formatters
 ├── go.mod
+├── go.sum
 └── README.md
 ```
 
 ## Dependencies
 
 - [spf13/cobra](https://github.com/spf13/cobra) - CLI framework
+
+## Advanced Features
+
+### GGUF Model Support
+
+The library includes specialized support for GGUF (GGML Universal Format) models:
+
+- **Quantization Detection**: Automatically detects available quantizations (Q4_K_M, IQ4_NL, F16, etc.)
+- **Split File Support**: Handles models split across multiple files
+- **Directory-based Quants**: Supports quantization-specific directory structures
+- **Comprehensive Parsing**: Recognizes various quantization naming patterns including Unsloth-style formats
+
+### Model Card Integration
+
+Access rich metadata from model cards including:
+- License information
+- Base model references
+- Model type and architecture
+- Quantization details
 
 ## License
 
